@@ -400,12 +400,12 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
         dataset = TimeSeries(
             data=df,
             time="time_idx",
-            target=["target1", "target2"], # M mode uses multiple targets
+            target=["target1", "target2"],  # M mode uses multiple targets
             group=["group_id"],
             num=["temperature", "humidity", "pressure", "wind_speed"],
             known=["temperature", "humidity", "pressure", "wind_speed", "time_idx"],
         )
-        
+
         data_module = TslibDataModule(
             time_series_dataset=dataset,
             batch_size=2,
@@ -415,7 +415,7 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
         )
         data_module.setup()
         metadata = data_module.metadata
-        
+
         model = TimeXer(
             loss=MAE(),
             hidden_size=64,
@@ -426,13 +426,13 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
             patch_length=4,
             metadata=metadata,
         )
-        
+
         train_dataloader = data_module.train_dataloader()
         batch = next(iter(train_dataloader))[0]
-        
+
         model.eval()
         with torch.no_grad():
             output = model(batch)
-            
+
         predictions = output["prediction"]
         assert predictions.shape == (2, 8, 2)
