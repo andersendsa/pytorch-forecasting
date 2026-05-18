@@ -3,7 +3,6 @@ Basic test framework for TimeXer v2 model.
 TODO:
 - Add tests for testing the scaling of features, once that is implemented in the D1/D2
   level.
-- Add tests for the M mode (multiple series) once that is implemented.
 """
 
 import numpy as np
@@ -394,3 +393,46 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
             assert test_output["prediction"].shape[1] == model.prediction_length
         except StopIteration:
             print("Test set is empty, skipping test testing")
+
+    def test_m_mode(sample_multivariate_multi_series_data):
+        """Test M mode (multiple series) with TimeXer model."""
+        df = sample_multivariate_multi_series_data
+        dataset = TimeSeries(
+            data=df,
+            time="time_idx",
+            target=["target1", "target2"], # M mode uses multiple targets
+            group=["group_id"],
+            num=["temperature", "humidity", "pressure", "wind_speed"],
+            known=["temperature", "humidity", "pressure", "wind_speed", "time_idx"],
+        )
+        
+        data_module = TslibDataModule(
+            time_series_dataset=dataset,
+            batch_size=2,
+            context_length=12,
+            prediction_length=8,
+            train_val_test_split=(0.7, 0.15, 0.15),
+        )
+        data_module.setup()
+        metadata = data_module.metadata
+        
+        model = TimeXer(
+            loss=MAE(),
+            hidden_size=64,
+            n_heads=8,
+            e_layers=2,
+            d_ff=256,
+            dropout=0.1,
+            patch_length=4,
+            metadata=metadata,
+        )
+        
+        train_dataloader = data_module.train_dataloader()
+        batch = next(iter(train_dataloader))[0]
+        
+        model.eval()
+        with torch.no_grad():
+            output = model(batch)
+            
+        predictions = output["prediction"]
+        assert predictions.shape == (2, 8, 2)
