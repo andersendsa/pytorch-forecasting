@@ -394,29 +394,24 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
         except StopIteration:
             print("Test set is empty, skipping test testing")
 
-    def test_m_mode(sample_multivariate_multi_series_data):
-        """Test M mode (multiple series) with TimeXer model."""
-        df = sample_multivariate_multi_series_data
-        dataset = TimeSeries(
-            data=df,
-            time="time_idx",
-            target=["target1", "target2"],  # M mode uses multiple targets
-            group=["group_id"],
-            num=["temperature", "humidity", "pressure", "wind_speed"],
-            known=["temperature", "humidity", "pressure", "wind_speed", "time_idx"],
-        )
 
-        data_module = TslibDataModule(
-            time_series_dataset=dataset,
-            batch_size=2,
-            context_length=12,
-            prediction_length=8,
-            train_val_test_split=(0.7, 0.15, 0.15),
-        )
-        data_module.setup()
-        metadata = data_module.metadata
+from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
 
-        model = TimeXer(
+
+def test_m_mode(sample_multivariate_multi_series_data):
+    """Test M mode (multiple series) with TimeXer model."""
+    df = sample_multivariate_multi_series_data
+    dataset = TimeSeries(
+        data=df,
+        time="time_idx",
+        target=["target1", "target2"],  # M mode uses multiple targets
+        group=["group_id"],
+        num=["temperature", "humidity", "pressure", "wind_speed"],
+        known=["temperature", "humidity", "pressure", "wind_speed", "time_idx"],
+    )
+
+    pkg = TimeXer_pkg_v2(
+        model_cfg=dict(
             loss=MAE(),
             hidden_size=64,
             n_heads=8,
@@ -424,15 +419,30 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
             d_ff=256,
             dropout=0.1,
             patch_length=4,
-            metadata=metadata,
-        )
+        ),
+        datamodule_cfg=dict(
+            batch_size=2,
+            context_length=12,
+            prediction_length=8,
+            train_val_test_split=(0.7, 0.15, 0.15),
+        ),
+        trainer_cfg=dict(
+            fast_dev_run=True,
+        ),
+    )
 
-        train_dataloader = data_module.train_dataloader()
-        batch = next(iter(train_dataloader))[0]
+    # Build datamodule and model under the hood to test forward pass
+    pkg.datamodule = pkg._build_datamodule(dataset)
+    pkg.datamodule.setup(stage="fit")
 
-        model.eval()
-        with torch.no_grad():
-            output = model(batch)
+    pkg._build_model(metadata=pkg.datamodule.metadata, **pkg.model_cfg)
 
-        predictions = output["prediction"]
-        assert predictions.shape == (2, 8, 2)
+    train_dataloader = pkg.datamodule.train_dataloader()
+    batch = next(iter(train_dataloader))[0]
+
+    pkg.model.eval()
+    with torch.no_grad():
+        output = pkg.model(batch)
+
+    predictions = output["prediction"]
+    assert predictions.shape == (2, 8, 2)
