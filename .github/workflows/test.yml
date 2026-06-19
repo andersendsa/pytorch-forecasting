@@ -113,8 +113,6 @@ jobs:
       - name: Run pytest
         shell: bash
         run: python -m pytest
-        env:
-          COVERAGE_FILE: ${{ github.workspace }}/.coverage
 
   test-deps-2025:
     needs: pytest-nosoftdeps
@@ -199,8 +197,6 @@ jobs:
       - name: Run pytest
         shell: bash
         run: python -m pytest
-        env:
-          COVERAGE_FILE: ${{ github.workspace }}/.coverage
 
       - name: Statistics
         run: |
