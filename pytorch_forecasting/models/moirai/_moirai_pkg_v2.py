@@ -4,6 +4,7 @@ Moirai package container.
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
+
 class Moirai_pkg_v2(Base_pkg):
     """Moirai package container."""
 
@@ -23,6 +24,7 @@ class Moirai_pkg_v2(Base_pkg):
     def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.moirai._moirai_v2 import Moirai
+
         return Moirai
 
     @classmethod
@@ -31,6 +33,7 @@ class Moirai_pkg_v2(Base_pkg):
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
+
         return EncoderDecoderTimeSeriesDataModule
 
     @classmethod

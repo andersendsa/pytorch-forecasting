@@ -4,6 +4,7 @@ Moirai-MoE package container.
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
+
 class MoiraiMoE_pkg_v2(Base_pkg):
     """MoiraiMoE package container."""
 
