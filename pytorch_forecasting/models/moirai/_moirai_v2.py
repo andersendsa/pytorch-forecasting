@@ -58,6 +58,31 @@ class Moirai(TslibBaseModel):
         return Moirai_pkg_v2
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """
+        Forward pass of the model.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing input tensors
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary containing output tensors
+        """
         if self.module is not None:
+            # We expect module to be a PyTorch model like MoiraiFinetune
+            # We extract necessary components from x
+
+            # This is a generic pass-through if the user structured their
+            # module to accept the PTF data format.
+            # In PTF, x usually has "encoder_cont", "target_past", etc.
+
+            # Since Moirai has its own expectations (e.g. past_target),
+            # adaptation is normally done in an adapter. But since we use
+            # module directly here as requested by soft-dependency wrappers,
+            # we rely on the module or adapter handling it.
             return self.module(x)
+
         raise NotImplementedError("Underlying module is not provided.")
