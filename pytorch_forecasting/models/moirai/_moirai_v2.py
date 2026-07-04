@@ -64,7 +64,7 @@ class Moirai(TslibBaseModel):
         Parameters
         ----------
         x : dict[str, torch.Tensor]
-            Dictionary containing input tensors
+            Dictionary containing input tensors (pytorch-forecasting format)
 
         Returns
         -------
@@ -72,17 +72,49 @@ class Moirai(TslibBaseModel):
             Dictionary containing output tensors
         """
         if self.module is not None:
-            # We expect module to be a PyTorch model like MoiraiFinetune
-            # We extract necessary components from x
+            # Map PTF dataloader format to uni2ts format.
+            # In PTF, x usually has:
+            # - target_past (usually mapped to past_target)
+            # - encoder_cont (often mapped to feat_dynamic_real)
 
-            # This is a generic pass-through if the user structured their
-            # module to accept the PTF data format.
-            # In PTF, x usually has "encoder_cont", "target_past", etc.
+            # This is a naive translation from the PTF representation to the inputs
+            # expected by Moirai/uni2ts. It acts as an adapter layer so the
+            # foundation model gets the tensors in the expected shape/types.
+            kwargs = {}
+            if "target_past" in x:
+                kwargs["past_target"] = x["target_past"]
 
-            # Since Moirai has its own expectations (e.g. past_target),
-            # adaptation is normally done in an adapter. But since we use
-            # module directly here as requested by soft-dependency wrappers,
-            # we rely on the module or adapter handling it.
-            return self.module(x)
+            if "encoder_cont" in x:
+                kwargs["past_feat_dynamic_real"] = x["encoder_cont"]
+
+            # past_observed_target and past_is_pad are required by uni2ts models
+            # We can construct these proxies based on the past target if not provided
+            if "past_target" in kwargs:
+                # Assuming valid data is not NaN and padding is filled with 0s/NaNs
+                # (which PTF handles with target_past_mask if available)
+                if "target_past_mask" in x:
+                    kwargs["past_observed_target"] = x["target_past_mask"].bool()
+                else:
+                    kwargs["past_observed_target"] = ~torch.isnan(kwargs["past_target"])
+
+                # Padding detection
+                if "encoder_lengths" in x:
+                    # Construct padding mask from encoder_lengths
+                    batch_size = kwargs["past_target"].size(0)
+                    seq_len = kwargs["past_target"].size(1)
+                    idx = torch.arange(seq_len, device=kwargs["past_target"].device)
+                    idx = idx.unsqueeze(0).expand(batch_size, -1)
+                    lengths = x["encoder_lengths"].unsqueeze(1)
+                    kwargs["past_is_pad"] = idx >= lengths
+                else:
+                    kwargs["past_is_pad"] = torch.zeros(
+                        kwargs["past_target"].shape[:2],
+                        dtype=torch.bool,
+                        device=kwargs["past_target"].device,
+                    )
+
+            # Perform prediction using uni2ts module
+            pred = self.module(**kwargs)
+            return {"prediction": pred}
 
         raise NotImplementedError("Underlying module is not provided.")
