@@ -25,6 +25,7 @@ from pytorch_forecasting.models.patch_tst import (
 from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.scinet import SCINet_pkg_v2, SCINet_v2
 from pytorch_forecasting.models.softs import SOFTS, SOFTS_pkg_v2
+from pytorch_forecasting.models.sparsetsf import SparseTSF, SparseTSF_pkg_v2
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
@@ -65,4 +66,6 @@ __all__ = [
     "ModernTCN",
     "FreTS",
     "FreTS_pkg_v2",
+    "SparseTSF",
+    "SparseTSF_pkg_v2",
 ]
